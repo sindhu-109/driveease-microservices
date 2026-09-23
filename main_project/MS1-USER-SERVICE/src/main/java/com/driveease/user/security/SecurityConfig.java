@@ -37,6 +37,11 @@ public class SecurityConfig {
                     "/ms1/signin"
                 ).permitAll()
 
+                .requestMatchers(
+                    "/swagger-ui/**",
+                    "/v3/api-docs/**"
+                ).permitAll()
+
                 .anyRequest().permitAll()
             );
 

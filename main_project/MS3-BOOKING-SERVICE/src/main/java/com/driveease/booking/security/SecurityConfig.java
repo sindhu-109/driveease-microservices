@@ -29,6 +29,12 @@ public class SecurityConfig {
                 // Actuator — open
                 .requestMatchers("/actuator/**").permitAll()
 
+                // Swagger UI and OpenAPI documentation — open
+                .requestMatchers(
+                    "/swagger-ui/**",
+                    "/v3/api-docs/**"
+                ).permitAll()
+
                 // GET all bookings (admin view) — ADMIN only
                 .requestMatchers(HttpMethod.GET, "/ms3/bookings").hasRole("ADMIN")
 

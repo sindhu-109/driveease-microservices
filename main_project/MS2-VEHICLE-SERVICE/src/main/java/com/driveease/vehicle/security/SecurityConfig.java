@@ -46,6 +46,12 @@ public class SecurityConfig {
                 // Actuator — open
                 .requestMatchers("/actuator/**").permitAll()
 
+                // Swagger UI and OpenAPI documentation — open
+                .requestMatchers(
+                    "/swagger-ui/**",
+                    "/v3/api-docs/**"
+                ).permitAll()
+
                 // READ operations — any authenticated user (USER, ADMIN, or SERVICE)
                 .requestMatchers(HttpMethod.GET, "/ms2/vehicles/**").authenticated()
 
