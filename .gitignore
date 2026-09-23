@@ -1,0 +1,24 @@
+# Frontend dependencies and build output
+driveease-frontend/node_modules/
+driveease-frontend/dist/
+
+# Java/Maven build output
+main_project/**/target/
+
+# IDE metadata
+main_project/.metadata/
+.idea/
+.vscode/
+*.iml
+*.class
+
+# Local environment and logs
+*.log
+*.local
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
