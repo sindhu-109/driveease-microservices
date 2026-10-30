@@ -4,9 +4,9 @@
  * Endpoints (via Vite proxy → API Gateway :8000 → User Service :8001):
  *
  *   POST /ms1/signup
- *     Request:  { username: string, password: string }
- *     Response: { message: string, status: 201 }
- *     Errors:   RuntimeException → 500 with { message: "Username already exists" }
+ *     Request:  { username: string, password: string, role: "USER"|"ADMIN" }
+ *     Response: { message: string, username: string, role: string }
+ *     Errors:   Duplicate usernames return 409; unsupported roles return 400.
  *
  *   POST /ms1/signin
  *     Request:  { username: string, password: string }
@@ -29,10 +29,10 @@ import api from './api';
  * Register a new account.
  * POST /ms1/signup
  */
-export const signup = async (username, password) => {
-  const response = await api.post('/ms1/signup', { username, password });
+export const signup = async (username, password, role = 'USER') => {
+  const response = await api.post('/ms1/signup', { username, password, role });
   return response.data;
-  // Success: { message: "User registered successfully", status: 201 }
+  // Success: { message, username, role }
 };
 
 /**
@@ -98,8 +98,18 @@ export const clearAuth = () => {
  * Read current auth state from localStorage.
  */
 export const getAuthState = () => ({
-  token:    localStorage.getItem('token'),
-  username: localStorage.getItem('username'),
-  role:     localStorage.getItem('role'),
-  userId:   localStorage.getItem('userId'),
+  ...(() => {
+    const token = localStorage.getItem('token');
+    const payload = token ? parseJWT(token) : null;
+    if (!payload?.exp || payload.exp * 1000 <= Date.now()) {
+      clearAuth();
+      return { token: null, username: null, role: null, userId: null };
+    }
+    return {
+      token,
+      username: localStorage.getItem('username'),
+      role: localStorage.getItem('role'),
+      userId: localStorage.getItem('userId'),
+    };
+  })(),
 });

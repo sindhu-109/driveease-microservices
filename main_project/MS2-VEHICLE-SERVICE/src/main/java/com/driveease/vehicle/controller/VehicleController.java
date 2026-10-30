@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.security.core.Authentication;
 
 @RestController
 @RequestMapping("/ms2/vehicles")
@@ -91,10 +92,14 @@ public class VehicleController {
     @PutMapping("/{id}/status")
     public ResponseEntity<VehicleResponse> updateStatus(
             @PathVariable Long id,
-            @RequestParam String status) {
+            @RequestParam String status,
+            Authentication authentication) {
+
+        boolean serviceCaller = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SERVICE"));
 
         return ResponseEntity.ok(
-                vehicleService.updateStatus(id, status)
+                vehicleService.updateStatus(id, status, serviceCaller)
         );
     }
 }

@@ -12,8 +12,7 @@ import { ROLES } from '../utils/auth';
  *   userId    string   extracted from JWT payload.userId (Long as string)
  *
  * isAdmin: role === "ADMIN"
- * Backend assigns "USER" to all new signups.
- * ADMIN role must be set directly in the database.
+ * The backend stores the selected USER or ADMIN signup role.
  */
 
 const AuthContext = createContext(null);

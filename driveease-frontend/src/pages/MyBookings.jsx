@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RefreshCw, PlusCircle } from 'lucide-react';
 import { getMyBookings, cancelBooking, startBooking, returnVehicle } from '../services/bookingService';
-import { BOOKING_STATUS } from '../utils/auth';
 import { extractError } from '../utils/errorUtils';
 import BookingCard from '../components/BookingCard';
 import Loading from '../components/Loading';
@@ -40,7 +39,10 @@ export default function MyBookings() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const timer = setTimeout(load, 0);
+    return () => clearTimeout(timer);
+  }, [load]);
 
   const filtered = filter === 'all' ? bookings : bookings.filter(b => b.status === filter);
 

@@ -8,21 +8,21 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.HashMap;
 import java.util.Map;
+import com.driveease.user.service.UserException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<?> handleRuntimeException(
-            RuntimeException ex) {
+    @ExceptionHandler(UserException.class)
+    public ResponseEntity<?> handleUserException(UserException ex) {
 
         Map<String, Object> response = new HashMap<>();
 
-        response.put("status", 400);
+        response.put("status", ex.getStatus().value());
         response.put("message", ex.getMessage());
 
         return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
+                .status(ex.getStatus())
                 .body(response);
     }
 

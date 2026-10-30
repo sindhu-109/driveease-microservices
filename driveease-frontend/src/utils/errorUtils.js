@@ -27,7 +27,7 @@
  */
 export const extractError = (error) => {
   // Spring Boot error body — "message" field
-  const msg = error?.response?.data?.message;
+  const msg = error?.response?.data?.message || error?.response?.data?.error;
   if (msg) return msg;
 
   // Spring validation errors may put details in "errors" array
@@ -48,6 +48,7 @@ export const extractError = (error) => {
   if (status === 403) return 'You do not have permission to do this.';
   if (status === 404) return 'The requested resource was not found.';
   if (status === 409) return 'A conflict occurred. The resource may already exist.';
+  if (status === 502 || status === 503) return 'A required service is temporarily unavailable. Please try again.';
 
   // Network / connection error
   if (error?.code === 'ERR_NETWORK' || error?.code === 'ECONNREFUSED') {

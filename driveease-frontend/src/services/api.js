@@ -42,7 +42,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !['/ms1/signin', '/ms1/signup'].includes(error.config?.url)) {
       // Token expired or invalid — clear auth and redirect
       localStorage.removeItem('token');
       localStorage.removeItem('username');

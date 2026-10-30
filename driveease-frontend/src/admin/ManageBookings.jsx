@@ -34,7 +34,10 @@ export default function ManageBookings() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const timer = setTimeout(load, 0);
+    return () => clearTimeout(timer);
+  }, [load]);
 
   const filtered = bookings.filter(b => {
     const matchSearch = !search.trim() || String(b.bookingId).includes(search) ||

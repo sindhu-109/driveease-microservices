@@ -8,6 +8,7 @@ import com.driveease.vehicle.repository.VehicleRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import org.springframework.http.HttpStatus;
 
 @Service
 public class VehicleService {
@@ -44,7 +45,7 @@ public class VehicleService {
 
         Vehicle vehicle = vehicleRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Vehicle not found with ID: " + id));
+                        new VehicleException(HttpStatus.NOT_FOUND, "Vehicle not found"));
 
         return new VehicleResponse(vehicle);
     }
@@ -55,7 +56,7 @@ public class VehicleService {
 
         Vehicle vehicle = vehicleRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Vehicle not found with ID: " + id));
+                        new VehicleException(HttpStatus.NOT_FOUND, "Vehicle not found"));
 
         vehicle.setType(request.getType());
         vehicle.setModel(request.getModel());
@@ -70,7 +71,7 @@ public class VehicleService {
 
         Vehicle vehicle = vehicleRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Vehicle not found with ID: " + id));
+                        new VehicleException(HttpStatus.NOT_FOUND, "Vehicle not found"));
 
         vehicleRepository.delete(vehicle);
     }
@@ -84,24 +85,29 @@ public class VehicleService {
                 .toList();
     }
 
-    public VehicleResponse updateStatus(
-            Long id,
-            String status) {
+    public VehicleResponse updateStatus(Long id, String status, boolean serviceCaller) {
 
         Vehicle vehicle = vehicleRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Vehicle not found with ID: " + id));
+                .orElseThrow(() -> new VehicleException(HttpStatus.NOT_FOUND, "Vehicle not found"));
 
-        String normalizedStatus = status.toUpperCase();
+        String normalizedStatus = status == null ? "" : status.toUpperCase();
 
         if (!normalizedStatus.equals("AVAILABLE")
                 && !normalizedStatus.equals("RESERVED")
                 && !normalizedStatus.equals("RENTED")
                 && !normalizedStatus.equals("MAINTENANCE")) {
 
-            throw new RuntimeException(
+            throw new VehicleException(HttpStatus.BAD_REQUEST,
                     "Invalid vehicle status. Use AVAILABLE, RESERVED, RENTED or MAINTENANCE"
             );
+        }
+
+        if (serviceCaller) {
+            String current = vehicle.getAvailabilityStatus();
+            boolean allowed = ("AVAILABLE".equals(current) && "RESERVED".equals(normalizedStatus))
+                    || ("RESERVED".equals(current) && ("RENTED".equals(normalizedStatus) || "AVAILABLE".equals(normalizedStatus)))
+                    || ("RENTED".equals(current) && "AVAILABLE".equals(normalizedStatus));
+            if (!allowed) throw new VehicleException(HttpStatus.CONFLICT, "Invalid vehicle status transition");
         }
 
         vehicle.setAvailabilityStatus(normalizedStatus);

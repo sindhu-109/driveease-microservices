@@ -55,6 +55,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 String username = jwtService.extractUsername(token);
                 String role     = jwtService.extractRole(token);
+                if (username == null || role == null || !List.of("USER", "ADMIN").contains(role)) {
+                    throw new IllegalArgumentException("Invalid token claims");
+                }
 
                 List<SimpleGrantedAuthority> authorities = List.of(
                         new SimpleGrantedAuthority("ROLE_" + role)

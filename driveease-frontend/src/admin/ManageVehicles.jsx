@@ -4,7 +4,6 @@ import {
   getAllVehicles, createVehicle, updateVehicle,
   deleteVehicle, updateVehicleStatus,
 } from '../services/vehicleService';
-import StatusBadge from '../components/StatusBadge';
 import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -12,7 +11,7 @@ import { extractError } from '../utils/errorUtils';
 
 // VehicleRequest fields: type, model, rentalPrice (no availabilityStatus)
 const EMPTY_FORM = { type: '', model: '', rentalPrice: '' };
-const STATUS_OPTIONS = ['AVAILABLE', 'RESERVED', 'RENTED'];
+const STATUS_OPTIONS = ['AVAILABLE', 'RESERVED', 'RENTED', 'MAINTENANCE'];
 
 export default function ManageVehicles() {
   const [vehicles, setVehicles] = useState([]);
@@ -36,7 +35,10 @@ export default function ManageVehicles() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const timer = setTimeout(load, 0);
+    return () => clearTimeout(timer);
+  }, [load]);
 
   const filtered = vehicles.filter(v =>
     !search.trim() ||

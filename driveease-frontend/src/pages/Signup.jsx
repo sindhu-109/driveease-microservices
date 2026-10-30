@@ -7,7 +7,7 @@ import { extractError } from '../utils/errorUtils';
 export default function Signup() {
   const navigate = useNavigate();
 
-  const [form, setForm]       = useState({ username: '', password: '', confirm: '' });
+  const [form, setForm]       = useState({ username: '', password: '', confirm: '', role: 'USER' });
   const [showPw, setShowPw]   = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
@@ -29,7 +29,7 @@ export default function Signup() {
     setLoading(true);
     try {
       // POST /ms1/signup → { message: "User registered successfully", status: 201 }
-      await signup(form.username.trim(), form.password);
+      await signup(form.username.trim(), form.password, form.role);
       setSuccess('Account created! Redirecting to login…');
       setTimeout(() => navigate('/login'), 1800);
     } catch (err) {
@@ -60,6 +60,15 @@ export default function Signup() {
             <input id="username" name="username" type="text" autoFocus
               autoComplete="username" className="form-input" placeholder="Choose a username"
               value={form.username} onChange={handleChange} disabled={loading} />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="role" className="form-label">Account role</label>
+            <select id="role" name="role" className="form-input" value={form.role}
+              onChange={handleChange} disabled={loading}>
+              <option value="USER">User</option>
+              <option value="ADMIN">Admin</option>
+            </select>
           </div>
 
           <div className="form-group">

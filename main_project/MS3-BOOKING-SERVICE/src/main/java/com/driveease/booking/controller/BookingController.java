@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import java.util.List;
@@ -37,8 +38,8 @@ public class BookingController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<BookingResponse> getBookingById(@PathVariable Long id) {
-        return ResponseEntity.ok(bookingService.getBookingById(id));
+    public ResponseEntity<BookingResponse> getBookingById(@PathVariable Long id, HttpServletRequest request, Authentication authentication) {
+        return ResponseEntity.ok(bookingService.getBookingById(id, getUserId(request), isAdmin(authentication)));
     }
 
     @GetMapping("/user")
@@ -50,19 +51,19 @@ public class BookingController {
     @PutMapping("/{id}/cancel")
     public ResponseEntity<BookingResponse> cancelBooking(@PathVariable Long id, HttpServletRequest httpRequest) {
         Long userId = getUserId(httpRequest);
-        return ResponseEntity.ok(bookingService.cancelBooking(id, userId));
+        return ResponseEntity.ok(bookingService.cancelBooking(id, userId, isAdmin(httpRequest)));
     }
 
     @PutMapping("/{id}/start")
     public ResponseEntity<BookingResponse> startBooking(@PathVariable Long id, HttpServletRequest httpRequest) {
         Long userId = getUserId(httpRequest);
-        return ResponseEntity.ok(bookingService.startBooking(id, userId));
+        return ResponseEntity.ok(bookingService.startBooking(id, userId, isAdmin(httpRequest)));
     }
 
     @PutMapping("/{id}/return")
     public ResponseEntity<BookingResponse> returnVehicle(@PathVariable Long id, HttpServletRequest httpRequest) {
         Long userId = getUserId(httpRequest);
-        return ResponseEntity.ok(bookingService.returnVehicle(id, userId));
+        return ResponseEntity.ok(bookingService.returnVehicle(id, userId, isAdmin(httpRequest)));
     }
 
     private Long getUserId(HttpServletRequest request) {
@@ -71,5 +72,14 @@ public class BookingController {
             throw new RuntimeException("User information not found in JWT");
         }
         return (Long) userId;
+    }
+
+    private boolean isAdmin(Authentication authentication) {
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+    }
+
+    private boolean isAdmin(HttpServletRequest request) {
+        return "ADMIN".equals(request.getAttribute("role"));
     }
 }

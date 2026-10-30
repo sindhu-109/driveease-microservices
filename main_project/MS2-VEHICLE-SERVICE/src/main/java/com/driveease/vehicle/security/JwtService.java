@@ -5,6 +5,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
@@ -12,13 +13,19 @@ import java.nio.charset.StandardCharsets;
 @Service
 public class JwtService {
 
-    private static final String SECRET =
-            "DriveEaseFleetManagementSecretKeyForJWT2026VerySecureKey";
+    private final String secret;
+
+    public JwtService(@Value("${jwt.secret}") String secret) {
+        if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException("JWT_SECRET must contain at least 32 bytes");
+        }
+        this.secret = secret;
+    }
 
     private SecretKey getSigningKey() {
 
         return Keys.hmacShaKeyFor(
-                SECRET.getBytes(StandardCharsets.UTF_8)
+                secret.getBytes(StandardCharsets.UTF_8)
         );
     }
 

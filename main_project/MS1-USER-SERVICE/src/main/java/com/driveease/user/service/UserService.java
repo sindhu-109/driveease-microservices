@@ -3,12 +3,14 @@ package com.driveease.user.service;
 import com.driveease.user.dto.AuthResponse;
 import com.driveease.user.dto.SigninRequest;
 import com.driveease.user.dto.SignupRequest;
+import com.driveease.user.dto.SignupResponse;
 import com.driveease.user.entity.User;
 import com.driveease.user.repository.UserRepository;
 import com.driveease.user.security.JwtService;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
 
 @Service
 public class UserService {
@@ -27,10 +29,20 @@ public class UserService {
         this.jwtService = jwtService;
     }
 
-    public String signup(SignupRequest request) {
+    public SignupResponse signup(SignupRequest request) {
+
+        String requestedRole = request.getRole();
+        String role = "USER";
+        if (requestedRole != null && !requestedRole.isBlank()) {
+            if (!"USER".equalsIgnoreCase(requestedRole)
+                    && !"ADMIN".equalsIgnoreCase(requestedRole)) {
+                throw new UserException(HttpStatus.BAD_REQUEST, "Role must be USER or ADMIN");
+            }
+            role = requestedRole.toUpperCase(java.util.Locale.ROOT);
+        }
 
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Username already exists");
+            throw new UserException(HttpStatus.CONFLICT, "Username already exists");
         }
 
         String encodedPassword =
@@ -39,12 +51,12 @@ public class UserService {
         User user = new User(
                 request.getUsername(),
                 encodedPassword,
-                "USER"
+                role
         );
 
         userRepository.save(user);
 
-        return "User registered successfully";
+        return new SignupResponse("User registered successfully", user.getUsername(), user.getRole());
     }
 
     public AuthResponse signin(SigninRequest request) {
@@ -52,13 +64,13 @@ public class UserService {
         User user = userRepository
                 .findByUsername(request.getUsername())
                 .orElseThrow(() ->
-                        new RuntimeException("Invalid username or password"));
+                        new UserException(HttpStatus.UNAUTHORIZED, "Invalid username or password"));
 
         if (!passwordEncoder.matches(
                 request.getPassword(),
                 user.getPassword())) {
 
-            throw new RuntimeException("Invalid username or password");
+            throw new UserException(HttpStatus.UNAUTHORIZED, "Invalid username or password");
         }
 
         String token = jwtService.generateToken(
@@ -79,6 +91,6 @@ public class UserService {
         return userRepository
                 .findByUsername(username)
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new UserException(HttpStatus.NOT_FOUND, "User not found"));
     }
 }

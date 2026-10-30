@@ -37,6 +37,13 @@ public class InternalServiceFilter extends OncePerRequestFilter {
     @Value("${internal.service.secret}")
     private String internalServiceSecret;
 
+    @jakarta.annotation.PostConstruct
+    void validateSecret() {
+        if (internalServiceSecret == null || internalServiceSecret.length() < 32) {
+            throw new IllegalStateException("INTERNAL_SERVICE_SECRET must contain at least 32 characters");
+        }
+    }
+
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,

@@ -10,6 +10,7 @@ const STATUS_FILTERS = [
   { value: 'AVAILABLE', label: 'Available' },
   { value: 'RESERVED',  label: 'Reserved'  },
   { value: 'RENTED',    label: 'Rented'    },
+  { value: 'MAINTENANCE', label: 'Maintenance' },
 ];
 
 export default function Vehicles() {
@@ -32,7 +33,10 @@ export default function Vehicles() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const timer = setTimeout(load, 0);
+    return () => clearTimeout(timer);
+  }, [load]);
 
   const filtered = vehicles.filter((v) => {
     const matchSearch = !search.trim()

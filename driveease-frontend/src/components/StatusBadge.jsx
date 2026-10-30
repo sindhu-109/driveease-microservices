@@ -18,6 +18,7 @@ const CONFIG = {
   AVAILABLE:  { cls: 'badge-available' },
   RESERVED:   { cls: 'badge-reserved'  },
   RENTED:     { cls: 'badge-rented'    },
+  MAINTENANCE:{ cls: 'badge-unknown'   },
   // Booking statuses
   CONFIRMED:  { cls: 'badge-confirmed' },
   ACTIVE:     { cls: 'badge-active'    },

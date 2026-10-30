@@ -1,8 +1,7 @@
 /**
  * bookingService.js — Booking Service (MS3) API calls.
  *
- * All requests via Vite proxy → Booking Service :8003
- * (Gateway /ms3 route not configured — see vite.config.js note)
+ * All requests use the /ms3 route through the configured gateway or Vite proxy.
  *
  * Authentication: Authorization: Bearer <token>  (handled by api.js)
  * userId is extracted from the JWT on the server — NOT sent in request body.

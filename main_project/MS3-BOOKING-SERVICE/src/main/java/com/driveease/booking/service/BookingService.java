@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import org.springframework.http.HttpStatus;
 
 @Service
 public class BookingService {
@@ -29,24 +30,28 @@ public class BookingService {
     @Transactional
     public BookingResponse createBooking(Long userId, BookingRequest request) {
         if (request == null) {
-            throw new RuntimeException("Booking request is required");
+            throw new BookingException(HttpStatus.BAD_REQUEST, "Booking request is required");
         }
 
-        if (!request.getEndDate().isAfter(request.getStartDate())) {
-            throw new RuntimeException("End date must be after start date");
+        if (request.getStartDate() == null || request.getEndDate() == null || request.getVehicleId() == null
+                || !request.getEndDate().isAfter(request.getStartDate())
+                || !request.getStartDate().isAfter(LocalDate.now())) {
+            throw new BookingException(HttpStatus.BAD_REQUEST, "Booking dates and vehicle are invalid");
         }
+
+        bookingRepository.lockVehicle(request.getVehicleId());
 
         VehicleResponse vehicle;
         try {
             vehicle = vehicleClient.getVehicle(request.getVehicleId());
         } catch (FeignException.NotFound e) {
-            throw new RuntimeException("Vehicle not found");
+            throw new BookingException(HttpStatus.NOT_FOUND, "Vehicle not found");
         } catch (FeignException e) {
-            throw new RuntimeException("Unable to communicate with Vehicle Service");
+            throw new BookingException(HttpStatus.SERVICE_UNAVAILABLE, "Vehicle Service is unavailable");
         }
 
         if (!"AVAILABLE".equalsIgnoreCase(vehicle.getAvailabilityStatus())) {
-            throw new RuntimeException("Vehicle is currently not available");
+            throw new BookingException(HttpStatus.CONFLICT, "Vehicle is currently not available");
         }
 
         List<Booking> overlappingBookings = bookingRepository.findOverlappingBookings(
@@ -56,7 +61,7 @@ public class BookingService {
         );
 
         if (!overlappingBookings.isEmpty()) {
-            throw new RuntimeException("Vehicle is already booked for the selected dates");
+            throw new BookingException(HttpStatus.CONFLICT, "Vehicle is already booked for the selected dates");
         }
 
         Booking booking = new Booking();
@@ -66,13 +71,18 @@ public class BookingService {
         booking.setEndDate(request.getEndDate());
         booking.setStatus("CONFIRMED");
 
-        Booking savedBooking = bookingRepository.save(booking);
-
         try {
             vehicleClient.updateVehicleStatus(request.getVehicleId(), "RESERVED");
         } catch (FeignException e) {
-            bookingRepository.delete(savedBooking);
-            throw new RuntimeException("Unable to reserve vehicle");
+            throw new BookingException(HttpStatus.SERVICE_UNAVAILABLE, "Unable to reserve vehicle");
+        }
+
+        Booking savedBooking;
+        try {
+            savedBooking = bookingRepository.save(booking);
+        } catch (RuntimeException e) {
+            compensateVehicleStatus(request.getVehicleId(), "AVAILABLE");
+            throw e;
         }
 
         return new BookingResponse(savedBooking);
@@ -85,9 +95,8 @@ public class BookingService {
                 .toList();
     }
 
-    public BookingResponse getBookingById(Long id) {
-        Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Booking not found with ID: " + id));
+    public BookingResponse getBookingById(Long id, Long userId, boolean admin) {
+        Booking booking = findAuthorized(id, userId, admin);
         return new BookingResponse(booking);
     }
 
@@ -99,82 +108,79 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResponse cancelBooking(Long id, Long userId) {
-        Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
-
-        if (!booking.getUserId().equals(userId)) {
-            throw new RuntimeException("You are not allowed to cancel this booking");
-        }
+    public BookingResponse cancelBooking(Long id, Long userId, boolean admin) {
+        Booking booking = findAuthorized(id, userId, admin);
 
         if ("COMPLETED".equals(booking.getStatus()) || "CANCELLED".equals(booking.getStatus())) {
-            throw new RuntimeException("Booking cannot be cancelled");
+            throw new BookingException(HttpStatus.CONFLICT, "Booking cannot be cancelled");
         }
-
+        updateVehicle(booking, "AVAILABLE");
         booking.setStatus("CANCELLED");
-        Booking updatedBooking = bookingRepository.save(booking);
-
         try {
-            vehicleClient.updateVehicleStatus(booking.getVehicleId(), "AVAILABLE");
-        } catch (FeignException e) {
-            throw new RuntimeException("Booking cancelled but vehicle status update failed");
+            return new BookingResponse(bookingRepository.save(booking));
+        } catch (RuntimeException e) {
+            compensateVehicleStatus(booking.getVehicleId(), "RESERVED");
+            throw e;
         }
-
-        return new BookingResponse(updatedBooking);
     }
 
     @Transactional
-    public BookingResponse startBooking(Long id, Long userId) {
-        Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
-
-        if (!booking.getUserId().equals(userId)) {
-            throw new RuntimeException("You are not allowed to start this booking");
-        }
+    public BookingResponse startBooking(Long id, Long userId, boolean admin) {
+        Booking booking = findAuthorized(id, userId, admin);
 
         if (!"CONFIRMED".equals(booking.getStatus())) {
-            throw new RuntimeException("Only confirmed bookings can be started");
+            throw new BookingException(HttpStatus.CONFLICT, "Only confirmed bookings can be started");
         }
 
         LocalDate today = LocalDate.now();
         if (today.isBefore(booking.getStartDate())) {
-            throw new RuntimeException("Rental start date has not arrived");
+            throw new BookingException(HttpStatus.CONFLICT, "Rental start date has not arrived");
         }
-
+        updateVehicle(booking, "RENTED");
         booking.setStatus("ACTIVE");
-        Booking updatedBooking = bookingRepository.save(booking);
-
         try {
-            vehicleClient.updateVehicleStatus(booking.getVehicleId(), "RENTED");
-        } catch (FeignException e) {
-            throw new RuntimeException("Unable to update vehicle to RENTED");
+            return new BookingResponse(bookingRepository.save(booking));
+        } catch (RuntimeException e) {
+            compensateVehicleStatus(booking.getVehicleId(), "RESERVED");
+            throw e;
         }
-
-        return new BookingResponse(updatedBooking);
     }
 
     @Transactional
-    public BookingResponse returnVehicle(Long id, Long userId) {
-        Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
-
-        if (!booking.getUserId().equals(userId)) {
-            throw new RuntimeException("You are not allowed to return this booking");
-        }
+    public BookingResponse returnVehicle(Long id, Long userId, boolean admin) {
+        Booking booking = findAuthorized(id, userId, admin);
 
         if (!"ACTIVE".equals(booking.getStatus())) {
-            throw new RuntimeException("Only active bookings can be returned");
+            throw new BookingException(HttpStatus.CONFLICT, "Only active bookings can be returned");
         }
-
+        updateVehicle(booking, "AVAILABLE");
         booking.setStatus("COMPLETED");
-        Booking updatedBooking = bookingRepository.save(booking);
-
         try {
-            vehicleClient.updateVehicleStatus(booking.getVehicleId(), "AVAILABLE");
-        } catch (FeignException e) {
-            throw new RuntimeException("Booking completed but vehicle status update failed");
+            return new BookingResponse(bookingRepository.save(booking));
+        } catch (RuntimeException e) {
+            compensateVehicleStatus(booking.getVehicleId(), "RENTED");
+            throw e;
         }
+    }
 
-        return new BookingResponse(updatedBooking);
+    private Booking findAuthorized(Long id, Long userId, boolean admin) {
+        Booking booking = bookingRepository.findById(id).orElseThrow(() ->
+                new BookingException(HttpStatus.NOT_FOUND, "Booking not found"));
+        if (!admin && !booking.getUserId().equals(userId)) {
+            throw new BookingException(HttpStatus.FORBIDDEN, "You are not allowed to access this booking");
+        }
+        return booking;
+    }
+
+    private void updateVehicle(Booking booking, String status) {
+        try { vehicleClient.updateVehicleStatus(booking.getVehicleId(), status); }
+        catch (FeignException e) {
+            throw new BookingException(HttpStatus.SERVICE_UNAVAILABLE, "Vehicle Service could not update the vehicle");
+        }
+    }
+
+    private void compensateVehicleStatus(Long vehicleId, String status) {
+        try { vehicleClient.updateVehicleStatus(vehicleId, status); }
+        catch (FeignException ignored) { /* downstream state is reconciled by retrying the booking action */ }
     }
 }

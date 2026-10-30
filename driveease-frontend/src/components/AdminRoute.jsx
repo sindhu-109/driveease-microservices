@@ -4,9 +4,8 @@ import { useAuth } from '../context/AuthContext';
 /**
  * AdminRoute — renders children only for ADMIN users.
  *
- * Role "ADMIN" is set directly in the database.
- * All new signups receive role "USER" automatically.
- * This is UI-level protection only; the backend enforces its own
+ * The role comes from the authenticated backend response.
+ * This is UI-level protection; the backend enforces its own
  * authorization on every API call.
  */
 export default function AdminRoute({ children }) {

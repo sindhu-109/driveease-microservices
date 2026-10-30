@@ -18,6 +18,8 @@ main_project/.metadata/
 .env
 .env.*
 !.env.example
+*.secrets.properties
+application-local.properties
 
 # OS files
 .DS_Store

@@ -12,6 +12,9 @@ import java.util.List;
 public interface BookingRepository
         extends JpaRepository<Booking, Long> {
 
+    @Query(value = "SELECT pg_advisory_xact_lock(:vehicleId)", nativeQuery = true)
+    void lockVehicle(@Param("vehicleId") Long vehicleId);
+
     @Query("""
         SELECT b
         FROM Booking b

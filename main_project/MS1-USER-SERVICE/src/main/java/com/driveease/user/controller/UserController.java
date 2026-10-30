@@ -3,7 +3,7 @@ package com.driveease.user.controller;
 import com.driveease.user.dto.AuthResponse;
 import com.driveease.user.dto.SigninRequest;
 import com.driveease.user.dto.SignupRequest;
-import com.driveease.user.entity.User;
+import com.driveease.user.dto.SignupResponse;
 import com.driveease.user.service.UserService;
 
 import jakarta.validation.Valid;
@@ -26,17 +26,10 @@ public class UserController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<?> signup(
+    public ResponseEntity<SignupResponse> signup(
             @Valid @RequestBody SignupRequest request) {
 
-        String message = userService.signup(request);
-
-        Map<String, Object> response = new HashMap<>();
-
-        response.put("message", message);
-        response.put("status", 201);
-
-        return ResponseEntity.status(201).body(response);
+        return ResponseEntity.status(201).body(userService.signup(request));
     }
 
     @PostMapping("/signin")
@@ -58,6 +51,9 @@ public class UserController {
 
         if (authentication != null) {
             response.put("username", authentication.getName());
+            response.put("role", authentication.getAuthorities().stream()
+                    .map(authority -> authority.getAuthority().replaceFirst("^ROLE_", ""))
+                    .findFirst().orElse(null));
         }
 
         return ResponseEntity.ok(response);

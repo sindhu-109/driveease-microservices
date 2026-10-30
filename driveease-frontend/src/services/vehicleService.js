@@ -1,8 +1,7 @@
 /**
  * vehicleService.js — Vehicle Service (MS2) API calls.
  *
- * All requests via Vite proxy → Vehicle Service :8002
- * (Gateway /ms2 route not configured — see vite.config.js note)
+ * All requests use the /ms2 route through the configured gateway or Vite proxy.
  *
  * Authentication: Authorization: Bearer <token>  (handled by api.js)
  *
@@ -10,7 +9,7 @@
  *   vehicleId         Long
  *   type              String   e.g. "CAR", "TRUCK", "VAN"
  *   model             String   e.g. "Toyota Camry"
- *   availabilityStatus String  "AVAILABLE" | "RESERVED" | "RENTED"
+ *   availabilityStatus String  "AVAILABLE" | "RESERVED" | "RENTED" | "MAINTENANCE"
  *   rentalPrice       BigDecimal
  *
  * VehicleRequest body (create / update):
@@ -71,7 +70,7 @@ export const deleteVehicle = async (id) => {
 };
 
 /**
- * PUT /ms2/vehicles/{id}/status?status=AVAILABLE|RESERVED|RENTED
+ * PUT /ms2/vehicles/{id}/status?status=AVAILABLE|RESERVED|RENTED|MAINTENANCE
  * Returns: VehicleResponse
  */
 export const updateVehicleStatus = async (id, status) => {
